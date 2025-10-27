@@ -17,7 +17,8 @@ def llm_node(state: MessagesState):
     You have access to the AdventureWorks database for answering user questions. 
     To run an SQL query, ensure you know the tables that exist by using the list_tables_tool.
     Ensure the SQL query is syntactically correct by using list_schema_tool on the relevant tables.
-    Produce either an SQL query or if you think the database is not needed, an user-ready answer
+    The names of the tables present in the AdventureWorks database all contain dots (.), wrap quotation marks around the tables when using any of them in the SQL queries
+    Produce either an SQL query or if you think the database is not needed, an user-ready answer.
     '''
     
     response = conversational_llm.\
