@@ -1,5 +1,8 @@
 import sqlite3
 from pathlib import Path
+import csv
+import chardet
+import re
 
 # -------------------------------
 # Paths
@@ -86,7 +89,6 @@ csv_to_table = {
 # Per-file delimiters
 # -------------------------------
 delim_map = {
-    # Most AdventureWorks CSVs
     "Person": "|",
     "Address": "|",
     "AddressType": "|",
@@ -95,7 +97,7 @@ delim_map = {
     "BusinessEntityContact": "|",
     "ContactType": "|",
     "CountryRegion": "|",
-    "Docuemnt": "|",
+    "Document": "|",
     "EmailAddress": "|",
     "Illustration": "|",
     "JobCandidate": "|",
@@ -104,10 +106,6 @@ delim_map = {
     "PhoneNumberType": "|",
     "StateProvince": "|",
     "Store": "|",
-    "ProductModel": "|",
-    "ProductModelorg": "|",
-    "ProductPhoto": "|",
-    # Default to tab if not listed
 }
 
 # -------------------------------
@@ -117,14 +115,49 @@ conn = sqlite3.connect(sqlite_path)
 cursor = conn.cursor()
 
 # -------------------------------
-# Helper: Open CSV safely with encoding detection
+# Drop unwanted tables
 # -------------------------------
-def open_csv_safe(csv_file):
-    import chardet
-    raw = open(csv_file, 'rb').read(4096)
-    result = chardet.detect(raw)
-    encoding = result['encoding'] or 'utf-8'
-    return open(csv_file, newline='', encoding=encoding, errors='replace')
+tables_to_drop = ["dbo.DatabaseLog", "dbo.ErrorLog"]
+
+for table in tables_to_drop:
+    cursor.execute(f'DROP TABLE IF EXISTS "{table}"')
+    print(f"🗑️ Dropped table: {table}")
+
+# -------------------------------
+# Helpers
+# -------------------------------
+def open_csv_safely(path):
+    raw = open(path, "rb").read(4096)
+    enc = chardet.detect(raw)["encoding"] or "utf-8"
+    return open(path, encoding=enc, newline="", errors="replace")
+
+def infer_type(value):
+    if value is None or value == "":
+        return None
+    value = value.strip()
+    if re.fullmatch(r"-?\d+", value):
+        return "INTEGER"
+    if re.fullmatch(r"-?\d+\.\d+", value):
+        return "REAL"
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return "DATE"
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", value):
+        return "DATETIME"
+    return "TEXT"
+
+def merge_types(type_list):
+    # Prioritize TEXT > REAL > INTEGER > DATE > DATETIME
+    if "TEXT" in type_list:
+        return "TEXT"
+    if "REAL" in type_list:
+        return "REAL"
+    if "INTEGER" in type_list:
+        return "INTEGER"
+    if "DATETIME" in type_list:
+        return "DATETIME"
+    if "DATE" in type_list:
+        return "DATE"
+    return "TEXT"
 
 # -------------------------------
 # Import CSVs
@@ -132,63 +165,69 @@ def open_csv_safe(csv_file):
 for csv_file in csv_folder.glob("*.csv"):
     csv_name = csv_file.stem
     table_name = csv_to_table.get(csv_name)
-    
+
     if not table_name:
-        print(f"Skipping {csv_file.name}: No mapping found")
+        print(f"⚠️ Skipping {csv_file.name}: No mapping found.")
         continue
 
-    print(f"\nProcessing CSV: {csv_file.name} → Table: {table_name}")
+    print(f"\n📦 Processing {csv_file.name} → {table_name}")
 
-    # Truncate table
-    cursor.execute(f'DELETE FROM "{table_name}"')
-
-    # Get columns from SQLite
+    # Get existing columns (from schema)
     cursor.execute(f'PRAGMA table_info("{table_name}")')
-    columns = [row[1] for row in cursor.fetchall()]
-    if not columns:
-        print(f"Skipping {table_name}: No columns found")
+    cols = [r[1] for r in cursor.fetchall()]
+    if not cols:
+        print(f"⚠️ Skipping {table_name}: no columns found in schema.")
         continue
 
-    # Determine delimiter
-    delimiter = delim_map.get(csv_name, '\t')
+    delimiter = delim_map.get(csv_name, "\t")
 
-    batch_size = 1000
-    rows_batch = []
+    # Collect samples for type inference
+    type_samples = [[] for _ in cols]
+    sample_limit = 500
 
-    with open_csv_safe(csv_file) as f:
-        for line in f:
-            line = line.rstrip('\n\r')
+    with open_csv_safely(csv_file) as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        for i, row in enumerate(reader):
+            if not row:
+                continue
+            row = (row + [None]*len(cols))[:len(cols)]
+            for j, val in enumerate(row):
+                t = infer_type(val)
+                if t:
+                    type_samples[j].append(t)
+            if i > sample_limit:
+                break
 
-            # Remove BOM and trailing +/ &
-            line = line.lstrip('\ufeff').strip('+&')
+    inferred_types = [merge_types(tlist) if tlist else "TEXT" for tlist in type_samples]
 
-            # Split manually using the correct delimiter
-            row = [cell.strip().strip('+&') if cell else None for cell in line.split(delimiter)]
+    # Recreate table
+    cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+    col_defs = ", ".join([f'"{c}" {t}' for c, t in zip(cols, inferred_types)])
+    cursor.execute(f'CREATE TABLE "{table_name}" ({col_defs})')
+    print(f"🧩 Created table {table_name} with inferred schema ({len(cols)} columns).")
 
-            # Pad or trim to match table columns
-            row = (row + [None]*len(columns))[:len(columns)]
-            rows_batch.append(tuple(row))
+    # Insert data
+    placeholders = ",".join(["?"] * len(cols))
+    quoted_cols = ",".join([f'"{c}"' for c in cols])
+    sql = f'INSERT INTO "{table_name}" ({quoted_cols}) VALUES ({placeholders})'
 
-            # Batch insert
-            if len(rows_batch) >= batch_size:
-                placeholders = ",".join("?" * len(columns))
-                quoted_columns = [f'"{c}"' for c in columns]
-                sql = f'INSERT INTO "{table_name}" ({",".join(quoted_columns)}) VALUES ({placeholders})'
-                cursor.executemany(sql, rows_batch)
-                rows_batch.clear()
+    batch, batch_size = [], 1000
+    with open_csv_safely(csv_file) as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        for row in reader:
+            row = (row + [None]*len(cols))[:len(cols)]
+            batch.append(tuple(row))
+            if len(batch) >= batch_size:
+                cursor.executemany(sql, batch)
+                batch.clear()
+        if batch:
+            cursor.executemany(sql, batch)
 
-        # Insert remaining rows
-        if rows_batch:
-            placeholders = ",".join("?" * len(columns))
-            quoted_columns = [f'"{c}"' for c in columns]
-            sql = f'INSERT INTO "{table_name}" ({",".join(quoted_columns)}) VALUES ({placeholders})'
-            cursor.executemany(sql, rows_batch)
-
-    print(f"Inserted rows into {table_name}")
+    print(f"✅ Inserted rows into {table_name}")
 
 # -------------------------------
 # Commit and close
 # -------------------------------
 conn.commit()
 conn.close()
-print("\nAll CSVs imported successfully!")
+print("\n🎯 All CSVs imported successfully with inferred types and cleaned DB!")
