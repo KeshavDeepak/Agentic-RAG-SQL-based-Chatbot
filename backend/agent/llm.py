@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 
 #* import the api key
-load_dotenv()
+load_dotenv(dotenv_path='backend/.env')
 
 #* an conversational llm
 conversational_llm = AzureChatOpenAI(

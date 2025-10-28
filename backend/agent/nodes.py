@@ -38,6 +38,6 @@ if __name__ == '__main__':
     
     response = llm_node(state)
     
-    print(response['messages'][-1].content, response['messages'][-1].tool_calls) #type: ignore
+    print(response['messages'][-1].content, response['messages'][-1].tool_calls) # type: ignore
     
     
