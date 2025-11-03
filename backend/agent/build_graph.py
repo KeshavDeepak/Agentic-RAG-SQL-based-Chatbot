@@ -1,7 +1,7 @@
 from backend.agent.nodes import list_tables_node, list_schema_node, llm_node, run_query_node
 from backend.agent.edges import next
 
-from langgraph.graph import MessagesState, StateGraph, START, END
+from langgraph.graph import MessagesState, StateGraph, START
 
 from langchain_core.messages import HumanMessage
 

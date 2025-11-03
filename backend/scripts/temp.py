@@ -1,2 +1,9 @@
-for i in range(1, 11):
-    print(i)
+import sqlite3
+
+conn = sqlite3.connect("backend/data/adventureworks_new.sqlite")
+cursor = conn.cursor()
+
+cursor.execute("pragma table_info('Sales.Store')")
+print(cursor.fetchall())
+
+conn.close()
