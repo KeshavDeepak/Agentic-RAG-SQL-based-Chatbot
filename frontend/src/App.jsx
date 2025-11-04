@@ -1,7 +1,7 @@
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import Conversation from './components/Conversation.jsx'
 import Chatbox from './components/Chatbox.jsx'
@@ -10,7 +10,14 @@ import './App.css'
 
 export default function App() {
 	//* holds the conversation so far
-	const [messages, setMessages] = useState([]);
+	const [messages, setMessages] = useState([
+		{'id' : 1, 'role' : 'system', 'content' : "You're connected to the AdventureWorks database. Ask me anything!"}
+	]);
+
+	//* auto-scrolls when new messages cause overflow
+	useEffect(() => {
+		window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth'});
+	}, [messages]);
 
 	//* handles an incoming question
 	const handleNewQuestion = (question) => {
@@ -40,10 +47,11 @@ export default function App() {
 	}
 	
 
-	return <>
+	return (
+	<div className='flex flex-col w-screen h-screen'>
 		<Conversation messages={messages}/>
-		<Chatbox handleNewQuestion={handleNewQuestion}/>
-	</>
+		<Chatbox handleNewQuestion={handleNewQuestion} messages={messages}/>
+	</div>)
 }
 
 //* send a question to the backend and receive an answer

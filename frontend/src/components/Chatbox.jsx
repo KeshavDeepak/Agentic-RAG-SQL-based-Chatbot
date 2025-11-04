@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-function Chatbox({ handleNewQuestion }) {
+function Chatbox({ handleNewQuestion, messages }) {
     //* stores the user's live input
     const [input, setInput] = useState('');
 
@@ -15,8 +15,9 @@ function Chatbox({ handleNewQuestion }) {
         setInput(""); //* clear the input
     }
 
-    return <>
-        <form id='chatbox-form' onSubmit={handleSubmit}>
+    return <div>
+        <form id='chatbox-form' onSubmit={handleSubmit}
+            className='fixed bottom-[5vh] w-full flex justify-center'>
             <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -26,10 +27,15 @@ function Chatbox({ handleNewQuestion }) {
                         handleSubmit(e); //* call handleSubmit instead
                     }
                 }}
-                placeholder="Ask something"
+                onInput={(e)=>{
+                    e.target.style.height = 'auto'; //* ensures height goes down on deletion of input
+                    e.target.style.height = `${e.target.scrollHeight}px`; //* matches scroll height
+                }}
+                placeholder="Ask me anything"
+                className='bg-black border-2 border-blue-500 p-3 rounded-xl w-1/2 outline-none resize-none max-h-[40vh] overflow-y-auto'
             />
         </form>
-    </>
+    </div>
 }
 
 export default Chatbox
