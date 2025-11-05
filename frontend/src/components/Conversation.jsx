@@ -1,4 +1,7 @@
-function Conversation({ messages }) {
+import ReactMarkdown from "react-markdown";
+
+//* main function
+export default function Conversation({ messages }) {
     const conversation_log = [];
 
     let common_alignment_styling = 'flex w-full mb-2'
@@ -9,25 +12,26 @@ function Conversation({ messages }) {
         if (message.role == 'user') {
             conversation_log.push(
                 <div key={message.id} className={`${common_alignment_styling} justify-end`}>
-                    <div className={`${common_bubble_styling} mr-10 bg-blue-500`}>
+                    <div className={`${common_bubble_styling} mr-10 bg-purple-700`}>
                         {message.content}
                     </div>
                 </div>
             )
         } 
         else if (message.role == 'assistant') {
+            console.log(message.content);
             conversation_log.push(
                 <div key={message.id} className={`${common_alignment_styling} justify-start`}>
-                    <div className={`${common_bubble_styling} ml-5`}>
-                        {message.content}
-                    </div>
+                    <div className={`${common_bubble_styling} ml-5 prose prose-invert`}>
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>  
                 </div>
             )
         }
         else if (message.role == 'system') {
             conversation_log.push(
                 <div key={message.id} className={`${common_alignment_styling} justify-center`}>
-                    <div className={`${common_bubble_styling} text-xl font-bold`}>
+                    <div className={`${common_bubble_styling} text-3xl font-bold`}>
                         {message.content}
                     </div>
                 </div>
@@ -41,5 +45,3 @@ function Conversation({ messages }) {
     </div>
     )
 }
-
-export default Conversation

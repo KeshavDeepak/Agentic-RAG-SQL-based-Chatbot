@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.agent.build_graph import agent
 
+from backend.prompts import user_parsing_prompt
+
 #* fastapi app
 app = FastAPI()
 
@@ -21,7 +23,13 @@ async def invoke_agent(request: Request):
     #* extract the user question
     full_request = await request.json()
     messages = full_request.get('messages', '')
-    
+
+    #* prepend user_parsing_prompt so llm gains context
+    messages = [
+        {'role' : 'system', 'content' : user_parsing_prompt}, 
+        *messages
+    ]
+
     #* invoke the agent
     response = agent.invoke({'messages' : messages})
     
