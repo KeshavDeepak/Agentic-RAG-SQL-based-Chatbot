@@ -3,7 +3,14 @@ from backend.agent.edges import next
 
 from langgraph.graph import MessagesState, StateGraph, START
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
+
+from backend.prompts import user_parsing_prompt
+
+#* graph configuration
+config={
+    'recursion_limit': 50
+}
 
 #* initialize a graph
 graph = StateGraph(MessagesState)
@@ -27,14 +34,20 @@ agent = graph.compile()
 #* test out the agent
 if __name__ == '__main__':
     state = MessagesState(messages=[
-        # HumanMessage('How many employees are present in AdventureWorks?')
-        # HumanMessage('Which year was the biggest turnover')
-        # HumanMessage('For each salesperson, show their total sales amount, total number of distinct customers, and their average order value for the last three years, but only include salespeople who sold products from at least three different product categories. Sort the result by total sales descending.')
-        HumanMessage('Least popular product with a non-zero sales count')
-        # HumanMessage('What is the meaning of life')
+        SystemMessage(content=user_parsing_prompt),
+        # HumanMessage(content="Show each customer’s name, email, territory, salesperson, their department, and the total sales amount including product names and categories.")
+        HumanMessage(content="List vendors whose supplied products were sold, showing product category, total revenue, customer names, and the country where those customers are located.")
     ])
     
-    agent_log = agent.invoke(state)
+    #* streaming mode
+    # for event in agent.stream(state):
+    #     for node, update in event.items():
+    #         update['messages'][-1].pretty_print()
+
+    #         print('\n\n')
+
+    #* invoke and see full results at once
+    agent_log = agent.invoke(state, config=config)
     
     for message in agent_log['messages']:
         message.pretty_print()
