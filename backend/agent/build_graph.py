@@ -9,7 +9,7 @@ from backend.prompts import user_parsing_prompt
 
 #* graph configuration
 config={
-    'recursion_limit': 50
+    'recursion_limit': 25
 }
 
 #* initialize a graph

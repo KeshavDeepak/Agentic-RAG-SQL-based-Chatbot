@@ -30,8 +30,12 @@ async def invoke_agent(request: Request):
         *messages
     ]
 
+    print("Invoking the agent now!")
+
     #* invoke the agent
     response = agent.invoke({'messages' : messages})
+
+    print("Response from agent successfully received")
     
     #* return the resopnse
     return response

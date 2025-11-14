@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 //* main function
 export default function Conversation({ messages }) {
@@ -22,7 +23,7 @@ export default function Conversation({ messages }) {
             conversation_log.push(
                 <div key={message.id} className={`${common_alignment_styling} justify-start`}>
                     <div className={`${common_bubble_styling} ml-5 prose prose-invert`}>
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                     </div>  
                 </div>
             )
