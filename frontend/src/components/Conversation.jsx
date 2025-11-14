@@ -19,7 +19,6 @@ export default function Conversation({ messages }) {
             )
         } 
         else if (message.role == 'assistant') {
-            console.log(message.content);
             conversation_log.push(
                 <div key={message.id} className={`${common_alignment_styling} justify-start`}>
                     <div className={`${common_bubble_styling} ml-5 prose prose-invert`}>
